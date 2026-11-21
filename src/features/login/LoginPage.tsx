@@ -37,7 +37,7 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
   const profile = useAuthStore((state) => state.profile)
   const notice = useAuthStore((state) => state.notice)
   const clearNotice = useAuthStore((state) => state.clearNotice)
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -68,15 +68,25 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
     clearNotice()
     setBusy(true)
     expectLoginRole(variant === 'admin' ? 'admin' : 'user')
-    const input = email.trim()
-    const loginEmail =
-      variant === 'staff' && !input.includes('@')
-        ? `${input.toLowerCase()}@gmail.com`
-        : input
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const input = username.trim()
+    const cleanId = input.toLowerCase().replace(/[^a-z0-9._-]/g, '')
+    const loginEmail = input.includes('@')
+      ? input.toLowerCase()
+      : `${cleanId}@sunnyplast.com`
+    let { error: signInError } = await supabase.auth.signInWithPassword({
       email: loginEmail,
       password,
     })
+    // Fallback for older accounts registered with @gmail.com
+    if (signInError && !input.includes('@')) {
+      const fallbackRes = await supabase.auth.signInWithPassword({
+        email: `${cleanId}@gmail.com`,
+        password,
+      })
+      if (!fallbackRes.error) {
+        signInError = null
+      }
+    }
     if (signInError) {
       expectLoginRole(null)
       setBusy(false)
@@ -109,14 +119,14 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
           <TextField
             label={variant === 'staff' ? 'User ID' : 'Email address'}
             type={variant === 'staff' ? 'text' : 'email'}
-            name="email"
-            value={email}
-            placeholder={variant === 'staff' ? 'e.g. USR10001' : undefined}
+            name="username"
+            value={username}
+            placeholder={variant === 'staff' ? 'e.g. Your name or user ID' : 'e.g. admin@example.com'}
             autoComplete="username"
             autoFocus
             disabled={busy}
             invalid={Boolean(error || notice)}
-            onChange={setEmail}
+            onChange={setUsername}
           />
           <PasswordField value={password} disabled={busy} invalid={Boolean(error || notice)} onChange={setPassword} />
           <div className="login-feedback" aria-live="polite">

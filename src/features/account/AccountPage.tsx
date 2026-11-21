@@ -49,9 +49,14 @@ export function AccountPage() {
   if (!profile) return <p className="boot">Checking login…</p>
   const isAdmin = profile.role === 'admin'
   const name = profile.full_name.trim() || 'Account'
+  const isSyntheticEmail = profile.email.endsWith('@sunnyplast.com') || profile.email.endsWith('@gmail.com')
   const userId =
     profile.user_code ||
-    (profile.email.endsWith('@gmail.com') ? profile.email.replace('@gmail.com', '').toUpperCase() : profile.id.slice(0, 8))
+    (profile.email.endsWith('@sunnyplast.com')
+      ? profile.email.replace('@sunnyplast.com', '')
+      : profile.email.endsWith('@gmail.com')
+        ? profile.email.replace('@gmail.com', '')
+        : profile.id.slice(0, 8))
 
   return (
     <div className="page">
@@ -63,7 +68,7 @@ export function AccountPage() {
           </span>
           <div className="account-head-copy">
             <h2>{name}</h2>
-            <p>{profile.email}</p>
+            <p>{profile.role === 'admin' ? profile.email : `User ID: ${userId}`}</p>
           </div>
         </header>
         <dl className="account-rows">
@@ -72,13 +77,15 @@ export function AccountPage() {
             <dd>{name}</dd>
           </div>
           <div>
-            <dt>Email</dt>
-            <dd>{profile.email}</dd>
-          </div>
-          <div>
             <dt>User ID</dt>
             <dd>{userId}</dd>
           </div>
+          {profile.role === 'admin' || !isSyntheticEmail ? (
+            <div>
+              <dt>Email</dt>
+              <dd>{profile.email}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Role</dt>
             <dd>{isAdmin ? 'Administrator' : 'User'}</dd>

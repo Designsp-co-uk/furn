@@ -43,11 +43,12 @@ Deno.serve(async (req) => {
       if (password.length < 8) return json({ error: 'Password needs at least 8 characters' }, 400)
 
       let email = String(body.email ?? '').trim().toLowerCase()
-      let userCode = String(body.userCode ?? '').trim().toUpperCase()
+      let userCode = String(body.userCode ?? '').trim()
 
       if (role === 'user') {
+        if (!userCode && fullName) userCode = fullName
         if (!userCode) userCode = await nextUserCode(admin)
-        if (!isValidUserCode(userCode)) return json({ error: 'Could not generate a valid user ID' }, 500)
+        if (!isValidUserCode(userCode)) return json({ error: 'Please enter a valid user ID or name' }, 400)
         email = userEmail(userCode)
       } else {
         if (!email.includes('@')) return json({ error: 'Enter a valid admin email' }, 400)
@@ -59,7 +60,12 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: fullName, role, user_code: userCode || undefined },
       })
-      if (error) return json({ error: error.message }, 400)
+      if (error) {
+        if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists')) {
+          return json({ error: 'A user with this name or user ID already exists.' }, 400)
+        }
+        return json({ error: error.message }, 400)
+      }
 
       if (data.user) {
         const profileUpdate: Record<string, unknown> = {
@@ -200,11 +206,13 @@ async function nextUserCode(admin: ReturnType<typeof createClient>): Promise<str
 }
 
 function isValidUserCode(value: string): boolean {
-  return /^USR\d+$/.test(value)
+  const trimmed = value.trim()
+  return trimmed.length >= 1 && /^[\w\s.-]+$/i.test(trimmed)
 }
 
 function userEmail(userCode: string): string {
-  return `${userCode.toLowerCase()}@gmail.com`
+  const clean = userCode.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '')
+  return `${clean || 'user'}@sunnyplast.com`
 }
 
 async function readUser(admin: ReturnType<typeof createClient>, userId: string) {

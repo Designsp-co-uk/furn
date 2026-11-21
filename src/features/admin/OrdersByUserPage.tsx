@@ -32,8 +32,11 @@ function personFrom(value: unknown): Omit<OwnerCard, 'drafts' | 'quoted' | 'book
 
 function formatOwnerId(person: { userCode?: string | null; email: string; id: string }): string {
   if (person.userCode) return person.userCode
+  if (person.email?.endsWith('@sunnyplast.com')) {
+    return person.email.replace('@sunnyplast.com', '')
+  }
   if (person.email?.endsWith('@gmail.com')) {
-    return person.email.replace('@gmail.com', '').toUpperCase()
+    return person.email.replace('@gmail.com', '')
   }
   return person.id.slice(0, 8)
 }

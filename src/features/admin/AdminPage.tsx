@@ -43,8 +43,11 @@ function personFrom(value: unknown): Person | null {
 
 function formatUserId(person: { user_code?: string | null; email: string; id: string }): string {
   if (person.user_code) return person.user_code
+  if (person.email.endsWith('@sunnyplast.com')) {
+    return person.email.replace('@sunnyplast.com', '')
+  }
   if (person.email.endsWith('@gmail.com')) {
-    return person.email.replace('@gmail.com', '').toUpperCase()
+    return person.email.replace('@gmail.com', '')
   }
   return person.id.slice(0, 8)
 }
@@ -127,6 +130,8 @@ export function AdminPage() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [fullName, setFullName] = useState('')
+  const [userId, setUserId] = useState('')
+  const [userIdCustomized, setUserIdCustomized] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'admin' | 'user'>('user')
   const [password, setPassword] = useState('')
@@ -182,7 +187,7 @@ export function AdminPage() {
   const users = loaded.filter((person) => person.role === 'user')
   const admins = loaded.filter((person) => person.role === 'admin')
   const visibleUsers = users.filter((person) => matchesQuery(query, person.full_name, person.email, person.user_code ?? '', formatUserId(person)))
-  const visibleAdmins = admins.filter((person) => matchesQuery(query, person.full_name, person.email, person.user_code ?? '', formatUserId(person)))
+  const visibleAdmins = admins.filter((person) => matchesQuery(query, person.full_name, person.email))
   const searching = query.trim().length > 0
   const unlockNeedsDate = unlockFor ? expiryOnOrBeforeToday(unlockFor.access_expires_on, today) : false
 
@@ -190,11 +195,32 @@ export function AdminPage() {
     setRows((current) => current?.map((row) => (row.id === id ? { ...row, ...patch } : row)) ?? current)
   }
 
+  function onFullNameChange(value: string) {
+    setFullName(value)
+    if (!userIdCustomized) {
+      setUserId(value)
+    }
+  }
+
+  function onRoleChange(newRole: 'admin' | 'user') {
+    setRole(newRole)
+    setFormError(null)
+  }
+
   function requestCreate(event: FormEvent) {
     event.preventDefault()
     if (!supabase || creating) return
+    if (!fullName.trim()) {
+      setFormError('Enter a full name')
+      return
+    }
     if (role === 'admin' && !email.trim().includes('@')) {
       setFormError('Enter a valid email for admin')
+      return
+    }
+    const finalUserId = userId.trim() || fullName.trim()
+    if (role === 'user' && !finalUserId) {
+      setFormError('Enter a name or user ID')
       return
     }
     if (password.length < 8) {
@@ -208,12 +234,14 @@ export function AdminPage() {
   async function onCreate() {
     if (!supabase || creating) return
     setCreating(true)
+    const effectiveUserId = userId.trim() || fullName.trim()
     const { data, error: invokeError } = await supabase.functions.invoke('admin-users', {
       body: {
         action: 'create',
         email: role === 'admin' ? email.trim() : undefined,
+        userCode: role === 'user' ? effectiveUserId : undefined,
         password,
-        fullName,
+        fullName: fullName.trim(),
         role,
       },
     })
@@ -228,6 +256,8 @@ export function AdminPage() {
       return
     }
     setFullName('')
+    setUserId('')
+    setUserIdCustomized(false)
     setEmail('')
     setRole('user')
     setPassword('')
@@ -270,7 +300,7 @@ export function AdminPage() {
     if (!shown) return
     try {
       const text = shown.userCode
-        ? `User ID: ${shown.userCode}\nLogin Email: ${shown.email}\nPassword: ${shown.password}`
+        ? `User ID: ${shown.userCode}\nPassword: ${shown.password}`
         : `Email: ${shown.email}\nPassword: ${shown.password}`
       await navigator.clipboard.writeText(text)
       pushToast('Login details copied')
@@ -411,18 +441,24 @@ export function AdminPage() {
               <p className="field-hint">Add their name, choose access, and set their first password.</p>
             </div>
             <div className="form-grid">
-              <TextField label="Full name" value={fullName} autoComplete="name" onChange={setFullName} />
-              <SelectField label="Role" value={role} onChange={(value) => setRole(value === 'admin' ? 'admin' : 'user')}>
+              <TextField label="Full name" value={fullName} autoComplete="name" onChange={onFullNameChange} />
+              <SelectField label="Role" value={role} onChange={(value) => onRoleChange(value === 'admin' ? 'admin' : 'user')}>
                 <option value="user">User</option>
                 <option value="admin">Administrator</option>
               </SelectField>
               {role === 'admin' ? (
                 <TextField label="Email" type="email" value={email} autoComplete="off" onChange={setEmail} />
               ) : (
-                <div className="field user-id-note">
-                  <span className="field-label">User ID</span>
-                  <p className="field-hint">Generated automatically. They sign in with this ID and password.</p>
-                </div>
+                <TextField
+                  label="User ID"
+                  value={userId}
+                  autoComplete="username"
+                  hint="Used to sign in. Defaults to the user's name."
+                  onChange={(val) => {
+                    setUserId(val)
+                    setUserIdCustomized(true)
+                  }}
+                />
               )}
               <TextField label="First password" type="password" value={password} autoComplete="new-password" hint="At least 8 characters" onChange={setPassword} />
             </div>
@@ -434,7 +470,7 @@ export function AdminPage() {
           <aside className="card desk-note">
             <p className="eyebrow">A quick note</p>
             <h2>Account details</h2>
-            <p>The user ID is created automatically. Save the first password when it appears—it is shown only once.</p>
+            <p>The user ID defaults to the user's name. They will sign in using this User ID and password. Save the first password when it appears—it is shown only once.</p>
           </aside>
         </div>
       ) : null}
@@ -569,7 +605,6 @@ export function AdminPage() {
                   <tr>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>User id</th>
                     <th>Role</th>
                     <th>Created</th>
                   </tr>
@@ -580,7 +615,6 @@ export function AdminPage() {
                       <tr key={person.id}>
                         <td>{person.full_name.trim() || '—'}</td>
                         <td>{person.email}</td>
-                        <td className="people-id">{formatUserId(person)}</td>
                         <td>admin</td>
                         <td>{formatDate(person.created_at)}</td>
                       </tr>
@@ -615,7 +649,7 @@ export function AdminPage() {
           </div>
           <div>
             <dt>{role === 'admin' ? 'Email' : 'User ID'}</dt>
-            <dd>{role === 'admin' ? email.trim() : 'Generated automatically'}</dd>
+            <dd>{role === 'admin' ? email.trim() : (userId.trim() || fullName.trim())}</dd>
           </div>
           <div>
             <dt>First password</dt>
@@ -728,12 +762,6 @@ export function AdminPage() {
                 <dt>{shown.userCode ? 'User ID' : 'Login / Email'}</dt>
                 <dd style={{ fontWeight: 600 }}>{shown.userCode || shown.email}</dd>
               </div>
-              {shown.userCode ? (
-                <div>
-                  <dt>Login Email</dt>
-                  <dd>{shown.email}</dd>
-                </div>
-              ) : null}
               <div>
                 <dt>Password</dt>
                 <dd>{shown.password}</dd>
