@@ -40,7 +40,9 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [successNotice, setSuccessNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [sendingReset, setSendingReset] = useState(false)
 
   useEffect(() => {
     if (session && profile) clearNotice()
@@ -68,10 +70,37 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
 
   if (session && profile) return <Navigate to="/" replace />
 
+  async function onForgotPassword() {
+    if (sendingReset || busy || !supabase) return
+    setError(null)
+    setSuccessNotice(null)
+    clearNotice()
+    const input = username.trim()
+    if (!input) {
+      setError('Enter your admin email address first, then click Forgot password.')
+      return
+    }
+    if (!input.includes('@')) {
+      setError('Enter a valid email address.')
+      return
+    }
+    setSendingReset(true)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(input, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setSendingReset(false)
+    if (resetError) {
+      setError(resetError.message)
+      return
+    }
+    setSuccessNotice(`Password reset link sent to ${input}. Check your email inbox.`)
+  }
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
     if (busy || !supabase) return
     setError(null)
+    setSuccessNotice(null)
     clearNotice()
     setBusy(true)
     expectLoginRole(variant === 'admin' ? 'admin' : 'user')
@@ -136,6 +165,18 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
             onChange={setUsername}
           />
           <PasswordField value={password} disabled={busy} invalid={Boolean(error || notice)} onChange={setPassword} />
+          {variant === 'admin' ? (
+            <div className="login-forgot-row">
+              <button
+                type="button"
+                className="login-forgot-link"
+                disabled={busy || sendingReset}
+                onClick={() => void onForgotPassword()}
+              >
+                {sendingReset ? 'Sending reset link…' : 'Forgot password?'}
+              </button>
+            </div>
+          ) : null}
           <div className="login-feedback" aria-live="polite">
             {error ? (
               <p className="form-error" role="alert">
@@ -145,6 +186,11 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
             {notice ? (
               <p className="form-error" role="alert">
                 {notice}
+              </p>
+            ) : null}
+            {successNotice ? (
+              <p className="form-success" role="status">
+                {successNotice}
               </p>
             ) : null}
           </div>
