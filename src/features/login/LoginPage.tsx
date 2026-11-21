@@ -138,9 +138,12 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
           <p className="login-aside-name">{company.name}</p>
           <p className="login-aside-tag">{company.tagline}</p>
           <p>
-            {company.lines[0]}
-            <br />
-            {company.lines[1]}
+            {company.lines.map((line, index) => (
+              <span key={index}>
+                {line}
+                {index < company.lines.length - 1 ? <br /> : null}
+              </span>
+            ))}
           </p>
           <p>{company.phone}</p>
           <p>{company.email}</p>
