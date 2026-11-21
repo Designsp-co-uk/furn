@@ -181,6 +181,7 @@ export function AdminPage() {
   if (!profile) return <p className="boot">Checking login…</p>
   if (profile.role !== 'admin') return <Navigate to="/" replace />
   const staff = profile
+  const isSuperAdmin = staff.email.trim().toLowerCase() === 'ambrish26@aol.com'
   const adding = location.hash === '#new-user'
   const today = localToday()
   const loaded = rows ?? []
@@ -416,7 +417,7 @@ export function AdminPage() {
     }
     setRows((current) => current?.filter((row) => row.id !== person.id) ?? current)
     setDeleteFor(null)
-    pushToast('User and their related data were permanently deleted', 'success')
+    pushToast(person.role === 'admin' ? 'Admin was permanently deleted' : 'User and their related data were permanently deleted', 'success')
   }
 
   function openReset(person: Person) {
@@ -607,16 +608,36 @@ export function AdminPage() {
                     <th>Email</th>
                     <th>Role</th>
                     <th>Created</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleAdmins.map((person) => {
+                    const ownRow = person.id === staff.id
+                    const busy = savingId === person.id
                     return (
                       <tr key={person.id}>
                         <td>{person.full_name.trim() || '—'}</td>
                         <td>{person.email}</td>
                         <td>admin</td>
                         <td>{formatDate(person.created_at)}</td>
+                        <td>
+                          {ownRow ? (
+                            <span className="field-hint">Current user</span>
+                          ) : (
+                            <div className="people-actions">
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                disabled={busy || resetting || !isSuperAdmin}
+                                title={!isSuperAdmin ? 'Only ambrish26@aol.com can delete admins' : undefined}
+                                onClick={() => setDeleteFor(person)}
+                              >
+                                Delete admin
+                              </Button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -718,13 +739,13 @@ export function AdminPage() {
 
       <ConfirmDialog
         open={deleteFor !== null}
-        title="Permanently delete this user?"
+        title={deleteFor?.role === 'admin' ? 'Permanently delete this admin?' : 'Permanently delete this user?'}
         description={
           deleteFor
-            ? `${displayName(deleteFor)} will be permanently removed. Their login, profile, and all data related to their account, including saved quotes, will be deleted and cannot be restored.`
+            ? `${displayName(deleteFor)} will be permanently removed. Their login, profile, and all data related to their account${deleteFor.role === 'admin' ? '' : ', including saved quotes,'} will be deleted and cannot be restored.`
             : ''
         }
-        confirmLabel={savingId && deleteFor ? 'Deleting…' : 'Delete user permanently'}
+        confirmLabel={savingId && deleteFor ? 'Deleting…' : deleteFor?.role === 'admin' ? 'Delete admin permanently' : 'Delete user permanently'}
         confirmDisabled={savingId !== null}
         tone="danger"
         onConfirm={() => void confirmDeleteUser()}

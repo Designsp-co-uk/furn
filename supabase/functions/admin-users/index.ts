@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service)
     const { data: profile } = await admin
       .from('profiles')
-      .select('role, active')
+      .select('role, active, email')
       .eq('id', userData.user.id)
       .single()
 
@@ -180,8 +180,24 @@ Deno.serve(async (req) => {
     if (action === 'delete-user') {
       const userId = String(body.userId ?? '')
       if (!userId) return json({ error: 'User not found' }, 404)
-      const target = await readUser(admin, userId)
-      if (target.error || !target.user) return json({ error: target.error || 'User not found' }, target.status)
+      if (userId === userData.user.id) {
+        return json({ error: 'You cannot delete your own account.' }, 400)
+      }
+
+      const { data: target, error: targetError } = await admin
+        .from('profiles')
+        .select('id, role, email')
+        .eq('id', userId)
+        .maybeSingle()
+      if (targetError) return json({ error: targetError.message }, 400)
+      if (!target) return json({ error: 'User not found' }, 404)
+
+      if (target.role === 'admin') {
+        const callerEmail = String(profile?.email ?? userData.user.email ?? '').trim().toLowerCase()
+        if (callerEmail !== 'ambrish26@aol.com') {
+          return json({ error: 'Only the superadmin (ambrish26@aol.com) can delete other admins.' }, 403)
+        }
+      }
 
       // Deleting the Auth user permanently removes their profile and related
       // quotes through the database foreign-key cascades.
