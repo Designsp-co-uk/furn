@@ -8,6 +8,13 @@ export function RequireAuth() {
   const session = useAuthStore((state) => state.session)
   const accountLocked = useAuthStore((state) => state.accountLocked)
 
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))
+  ) {
+    return <Navigate to={`/reset-password${window.location.search}${window.location.hash}`} replace />
+  }
+
   if (loading) return <p className="boot">Checking login…</p>
   if (!session) return <Navigate to="/login" replace />
   if (accountLocked) {

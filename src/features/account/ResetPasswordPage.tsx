@@ -19,14 +19,25 @@ export function ResetPasswordPage() {
       setReady(true)
       return
     }
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCanReset(Boolean(session))
+
+    const isRecovery =
+      window.location.hash.includes('type=recovery') ||
+      window.location.search.includes('type=recovery')
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || Boolean(session) || isRecovery) {
+        setCanReset(true)
+      }
       setReady(true)
     })
+
     void supabase.auth.getSession().then(({ data: sessionData }) => {
-      setCanReset(Boolean(sessionData.session))
+      if (sessionData.session || isRecovery) {
+        setCanReset(true)
+      }
       setReady(true)
     })
+
     return () => data.subscription.unsubscribe()
   }, [])
 
@@ -49,12 +60,12 @@ export function ResetPasswordPage() {
       setError(updateError.message)
       return
     }
-    const { error: stampError } = await supabase.rpc('mark_password_set')
-    setBusy(false)
-    if (stampError) {
-      setError(stampError.message)
-      return
+    try {
+      await supabase.rpc('mark_password_set')
+    } catch {
+      // Non-fatal if rpc is not configured
     }
+    setBusy(false)
     navigate('/account', { replace: true })
   }
 

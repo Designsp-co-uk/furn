@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { RequireAuth } from '../auth/RequireAuth.tsx'
 import { AppShell } from '../components/layout/AppShell.tsx'
 import { AccountPage } from '../features/account/AccountPage.tsx'
@@ -15,30 +16,53 @@ import { HomePage } from '../features/home/HomePage.tsx'
 import { LoginPage } from '../features/login/LoginPage.tsx'
 import { PrintPreviewPage } from '../features/print/PrintPreviewPage.tsx'
 
+function AuthRecoveryRedirect() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const hash = window.location.hash
+    const search = window.location.search
+    const isRecovery =
+      hash.includes('type=recovery') ||
+      search.includes('type=recovery') ||
+      (hash.includes('access_token=') && hash.includes('recovery'))
+    if (isRecovery && location.pathname !== '/reset-password') {
+      navigate(`/reset-password${search}${hash}`, { replace: true })
+    }
+  }, [location.pathname, navigate])
+
+  return null
+}
+
 export function AppRouter() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/admin/login" element={<LoginPage variant="admin" />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route element={<RequireAuth />}>
-        <Route element={<AppShell />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/orders" element={<DashboardPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/admin/users" element={<AdminPage />} />
-          <Route path="/admin/users/:id/orders" element={<UserOrdersPage />} />
-          <Route path="/admin/orders/users" element={<OrdersByUserPage />} />
-          <Route path="/admin/orders/users/:id" element={<UserOrdersPage />} />
-          <Route path="/admin/prices" element={<PricesPage />} />
-          <Route path="/admin/catalog" element={<CatalogPage />} />
-          <Route path="/admin/orders" element={<AdminOrdersPage />} />
-          <Route path="/quote/:id" element={<ConfiguratorPage />} />
-          <Route path="/quote/:id/print/work-order" element={<PrintPreviewPage kind="work-order" />} />
-          <Route path="/quote/:id/print/quote" element={<PrintPreviewPage kind="quote" />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+    <>
+      <AuthRecoveryRedirect />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin/login" element={<LoginPage variant="admin" />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/orders" element={<DashboardPage />} />
+            <Route path="/account" element={<AccountPage />} />
+            <Route path="/admin/users" element={<AdminPage />} />
+            <Route path="/admin/users/:id/orders" element={<UserOrdersPage />} />
+            <Route path="/admin/orders/users" element={<OrdersByUserPage />} />
+            <Route path="/admin/orders/users/:id" element={<UserOrdersPage />} />
+            <Route path="/admin/prices" element={<PricesPage />} />
+            <Route path="/admin/catalog" element={<CatalogPage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
+            <Route path="/quote/:id" element={<ConfiguratorPage />} />
+            <Route path="/quote/:id/print/work-order" element={<PrintPreviewPage kind="work-order" />} />
+            <Route path="/quote/:id/print/quote" element={<PrintPreviewPage kind="quote" />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   )
 }

@@ -235,6 +235,14 @@ export function listenToAuth(): () => void {
   }
 
   const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/reset-password') {
+        const hash = window.location.hash
+        const search = window.location.search
+        window.location.replace(`/reset-password${search}${hash}`)
+        return
+      }
+    }
     window.setTimeout(() => {
       void syncSession(session, event === 'PASSWORD_RECOVERY')
     }, 0)

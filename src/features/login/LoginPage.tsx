@@ -59,6 +59,13 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
       </div>
     )
   }
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))
+  ) {
+    return <Navigate to={`/reset-password${window.location.search}${window.location.hash}`} replace />
+  }
+
   if (session && profile) return <Navigate to="/" replace />
 
   async function onSubmit(event: FormEvent) {
