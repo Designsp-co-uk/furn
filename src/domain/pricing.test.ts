@@ -236,6 +236,62 @@ describe('pricing', () => {
     expect(bare.partsCost).toBe(0)
     expect(bare.lineTotal).toBe(0)
   })
+
+  it('allows manual override of item price and recalculates subtotal and totals accordingly', () => {
+    const item = createQuoteItem('window')
+    item.quantity = 2
+    const autoPrice = calculateItemPrice(item, pricingDefaults)
+    expect(autoPrice.isManualPrice).toBe(false)
+    expect(autoPrice.calculatedUnitPrice).toBe(autoPrice.unitPrice)
+
+    // Manual override of unit price to 800
+    item.manualUnitPrice = 800
+    const manualPrice = calculateItemPrice(item, pricingDefaults)
+    expect(manualPrice.isManualPrice).toBe(true)
+    expect(manualPrice.unitPrice).toBe(800)
+    expect(manualPrice.lineTotal).toBe(1600)
+    expect(manualPrice.calculatedUnitPrice).toBe(autoPrice.unitPrice)
+
+    const quote: Quote = {
+      id: 'q-manual',
+      jobNo: 'SP-0119',
+      reference: 'Ref',
+      supply: 'Supply & fit',
+      requestedDate: '',
+      customer: { name: 'Customer', phone: '', email: '', address: '', salesperson: '' },
+      status: 'draft',
+      createdAt: '',
+      updatedAt: '',
+      items: [item],
+      discountPercent: 10,
+      taxPercent: 20,
+      configDraft: null,
+      editingItemId: null,
+    }
+
+    const totals = calculateQuoteTotals(quote, pricingDefaults)
+    expect(totals.subtotal).toBe(1600)
+    expect(totals.discountAmount).toBe(160) // 10% of 1600
+    const net = totals.subtotal - totals.discountAmount
+    expect(totals.taxAmount).toBe(calculateTax(net, 20)) // 288 (20% of 1440)
+    expect(totals.grandTotal).toBe(net + totals.taxAmount) // 1728
+    expect(totals.isManualGrandTotal).toBe(false)
+
+    // Manual override of the final grand total to 1700
+    quote.manualGrandTotal = 1700
+    const manualTotals = calculateQuoteTotals(quote, pricingDefaults)
+    expect(manualTotals.subtotal).toBe(1600)
+    expect(manualTotals.grandTotal).toBe(1700)
+    expect(manualTotals.calculatedGrandTotal).toBe(1728)
+    expect(manualTotals.isManualGrandTotal).toBe(true)
+
+    // Resetting manual price reverts to calculated
+    delete item.manualUnitPrice
+    delete quote.manualGrandTotal
+    const revertedTotals = calculateQuoteTotals(quote, pricingDefaults)
+    expect(revertedTotals.subtotal).toBe(autoPrice.lineTotal)
+    expect(revertedTotals.isManualGrandTotal).toBe(false)
+  })
 })
 
 describe('work order cut list', () => {

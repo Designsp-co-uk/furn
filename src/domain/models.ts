@@ -122,6 +122,8 @@ export interface QuoteItem {
   removedPartIds?: string[]
   /** Inventory parts added to this opening. Absent on older quotes. */
   addedParts?: AddedPart[]
+  /** Optional manually entered unit price overriding calculated parts + markup cost. */
+  manualUnitPrice?: number | null
 }
 
 /** The fields of the customer form, kept so the form reopens exactly as it was filled in. */
@@ -167,6 +169,8 @@ export interface Quote {
   customerNotes?: string
   internalNotes?: string
   supplierNotes?: string
+  /** Optional manually entered grand total overriding calculated total. */
+  manualGrandTotal?: number | null
 }
 
 export interface PartLine {
@@ -182,8 +186,10 @@ export interface ItemPricing {
   perimeterM: number
   parts: PartLine[]
   partsCost: number
+  calculatedUnitPrice?: number
   unitPrice: number
   lineTotal: number
+  isManualPrice?: boolean
 }
 
 export interface QuoteTotals {
@@ -193,6 +199,8 @@ export interface QuoteTotals {
   taxPercent: number
   taxAmount: number
   grandTotal: number
+  calculatedGrandTotal?: number
+  isManualGrandTotal?: boolean
 }
 
 export interface SectionRow {

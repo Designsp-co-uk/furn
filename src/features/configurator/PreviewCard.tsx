@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { Pencil, X } from 'lucide-react'
 import type { CatalogPart } from '../../domain/catalogue.ts'
 import type { ItemPricing, PartLine, QuoteItem } from '../../domain/models.ts'
 import type { ValidationIssue } from '../../domain/validation.ts'
@@ -16,6 +16,7 @@ import { OpeningDrawing } from '../drawing/OpeningDrawing.tsx'
 import { matchesQuery } from '../admin/filters.ts'
 import { layoutOf } from '../../domain/layout.ts'
 import { revealPanel } from './revealPanel.ts'
+import { EditItemPriceDialog } from '../quote/EditItemPriceDialog.tsx'
 
 interface PreviewCardProps {
   item: QuoteItem
@@ -31,11 +32,13 @@ interface PreviewCardProps {
 
 export function PreviewCard({ item, pricing, issues, editing, locked = false, onChange, onAdd, onUpdate, onCancel }: PreviewCardProps) {
   const catalogue = useAppStore((state) => state.catalogue)
+  const pricingConfig = useAppStore((state) => state.pricingConfig)
   const markupPercent = useAppStore((state) => state.pricingConfig.markupPercent)
   const [large, setLarge] = useState(false)
   const [partsOpen, setPartsOpen] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<PartLine | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [fixedPartId, setFixedPartId] = useState<string | null>(null)
   const [fixedQty, setFixedQty] = useState(1)
@@ -53,10 +56,27 @@ export function PreviewCard({ item, pricing, issues, editing, locked = false, on
       <p className="preview-size">
         {item.widthMm} × {item.heightMm} <span>mm</span>
       </p>
-      <p className="preview-price" aria-live="polite">
-        {formatMoney(pricing.unitPrice)}
-        <small>each · {pricing.areaM2.toFixed(2)} m² · line {formatMoney(pricing.lineTotal)}</small>
-      </p>
+      <div className="preview-price-container">
+        <p className="preview-price" aria-live="polite">
+          {formatMoney(pricing.unitPrice)}
+          <small>
+            each · {pricing.areaM2.toFixed(2)} m² · line {formatMoney(pricing.lineTotal)}
+            {pricing.isManualPrice ? <> · <span className="manual-price-badge">manual</span></> : null}
+          </small>
+        </p>
+        {locked ? null : (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="btn-edit-preview-price"
+            icon={<Pencil size={14} />}
+            onClick={() => setPriceDialogOpen(true)}
+            aria-label="Edit opening price"
+          >
+            Edit price
+          </Button>
+        )}
+      </div>
       {issues[0] ? (
         <p className="form-error" role="alert">
           {issues[0].message}
@@ -250,6 +270,16 @@ export function PreviewCard({ item, pricing, issues, editing, locked = false, on
           }}
         />
       </Modal>
+
+      <EditItemPriceDialog
+        open={priceDialogOpen}
+        item={item}
+        pricingConfig={pricingConfig}
+        onOpenChange={setPriceDialogOpen}
+        onSave={(manualUnitPrice) => {
+          onChange({ ...item, manualUnitPrice })
+        }}
+      />
     </aside>
   )
 }

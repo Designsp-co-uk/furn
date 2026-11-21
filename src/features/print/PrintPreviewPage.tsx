@@ -98,7 +98,7 @@ export function PrintPreviewPage({ kind }: PrintPreviewPageProps) {
       </div>
       <div ref={contentRef}>
         {kind === 'work-order' ? (
-          <WorkOrderDocument quote={quote} printedAt={printedAt} />
+          <WorkOrderDocument quote={quote} printedAt={printedAt} pricingConfig={pricingConfig} />
         ) : (
           <InvoiceDocument quote={quote} pricingConfig={pricingConfig} />
         )}

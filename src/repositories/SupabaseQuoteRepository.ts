@@ -60,15 +60,23 @@ function readAdded(item: QuoteItem): AddedPart[] | undefined {
   return parts
 }
 
+function readManualPrice(value: unknown): number | null | undefined {
+  if (value === null) return null
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
+  return undefined
+}
+
 function withProductId(item: QuoteItem): QuoteItem {
   const productId = typeof item.productId === 'string' && item.productId.trim() ? item.productId : item.productType
   const removedPartIds = readRemoved(item)
   const addedParts = readAdded(item)
+  const manualUnitPrice = readManualPrice(item.manualUnitPrice)
   return {
     ...item,
     productId,
     ...(removedPartIds !== undefined ? { removedPartIds } : {}),
     ...(addedParts !== undefined ? { addedParts } : {}),
+    ...(manualUnitPrice !== undefined ? { manualUnitPrice } : {}),
   }
 }
 
@@ -80,6 +88,10 @@ export function quoteFromDocument(value: unknown): Quote | null {
   if (!source.customer || typeof source.customer !== 'object' || !Array.isArray(source.items)) return null
   const quote = { ...source }
   delete quote.owner
+  const manualGrandTotal = readManualPrice(source.manualGrandTotal)
+  if (manualGrandTotal !== undefined) {
+    quote.manualGrandTotal = manualGrandTotal
+  }
   quote.items = source.items.map((item) => withProductId(item))
   quote.configDraft = source.configDraft ? withProductId(source.configDraft) : null
   return quote

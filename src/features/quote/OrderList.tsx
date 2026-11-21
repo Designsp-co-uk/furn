@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button.tsx'
 import { OpeningDrawing } from '../drawing/OpeningDrawing.tsx'
 import { matchesQuery } from '../admin/filters.ts'
 import { layoutOf } from '../../domain/layout.ts'
+import { EditItemPriceDialog } from './EditItemPriceDialog.tsx'
 
 interface OrderListProps {
   items: QuoteItem[]
@@ -20,11 +21,22 @@ interface OrderListProps {
   onEdit: (item: QuoteItem) => void
   onDuplicate: (id: string) => void
   onDelete: (item: QuoteItem) => void
+  onUpdatePrice?: (itemId: string, manualUnitPrice: number | null) => Promise<void> | void
 }
 
-export function OrderList({ items, pricingConfig, editingId, locked = false, onEdit, onDuplicate, onDelete }: OrderListProps) {
+export function OrderList({
+  items,
+  pricingConfig,
+  editingId,
+  locked = false,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onUpdatePrice,
+}: OrderListProps) {
   const catalogue = useAppStore((state) => state.catalogue)
   const [query, setQuery] = useState('')
+  const [priceTarget, setPriceTarget] = useState<{ item: QuoteItem; index: number } | null>(null)
   const showSearch = items.length > 1
   if (!showSearch && query) setQuery('')
 
@@ -94,7 +106,21 @@ export function OrderList({ items, pricingConfig, editingId, locked = false, onE
                   {item.notes ? <p className="order-notes">{item.notes}</p> : null}
                 </div>
                 <div className="order-money">
-                  <span>{formatMoney(price.unitPrice)} each</span>
+                  <div className="order-money-head">
+                    <span>{formatMoney(price.unitPrice)} each</span>
+                    {price.isManualPrice ? <span className="manual-price-badge">manual</span> : null}
+                    {locked || !onUpdatePrice ? null : (
+                      <button
+                        type="button"
+                        className="btn-inline-icon"
+                        title="Edit price"
+                        aria-label={`Edit price for opening ${index + 1}`}
+                        onClick={() => setPriceTarget({ item, index })}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    )}
+                  </div>
                   <strong>{formatMoney(price.lineTotal)}</strong>
                 </div>
                 {locked ? null : (
@@ -102,6 +128,16 @@ export function OrderList({ items, pricingConfig, editingId, locked = false, onE
                     <Button size="sm" variant="secondary" icon={<Pencil size={15} />} onClick={() => onEdit(item)}>
                       Edit
                     </Button>
+                    {onUpdatePrice ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<Pencil size={15} />}
+                        onClick={() => setPriceTarget({ item, index })}
+                      >
+                        Edit price
+                      </Button>
+                    ) : null}
                     <Button size="sm" variant="secondary" icon={<Copy size={15} />} onClick={() => onDuplicate(item.id)}>
                       Duplicate
                     </Button>
@@ -115,6 +151,23 @@ export function OrderList({ items, pricingConfig, editingId, locked = false, onE
           })}
         </ul>
       )}
+
+      {onUpdatePrice ? (
+        <EditItemPriceDialog
+          open={priceTarget !== null}
+          item={priceTarget?.item ?? null}
+          index={priceTarget?.index}
+          pricingConfig={pricingConfig}
+          onOpenChange={(open) => {
+            if (!open) setPriceTarget(null)
+          }}
+          onSave={async (manualUnitPrice) => {
+            if (priceTarget && onUpdatePrice) {
+              await onUpdatePrice(priceTarget.item.id, manualUnitPrice)
+            }
+          }}
+        />
+      ) : null}
     </div>
   )
 }

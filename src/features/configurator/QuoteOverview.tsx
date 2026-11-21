@@ -6,6 +6,7 @@ import { formatMoney } from '../../utils/money.ts'
 import { formatDate } from '../../utils/dates.ts'
 import { NoteEditDialog, type NoteType } from './NoteEditDialog.tsx'
 import { useAppStore } from '../../store/useAppStore.ts'
+import { EditGrandTotalDialog } from '../quote/EditGrandTotalDialog.tsx'
 
 export interface QuoteOverviewProps {
   quote: Quote
@@ -14,6 +15,7 @@ export interface QuoteOverviewProps {
   onEditCustomer: () => void
   onEditProducts: () => void
   onSaveNotes?: (patch: Partial<Quote>) => Promise<boolean>
+  onSaveGrandTotal?: (manualGrandTotal: number | null) => Promise<boolean | void> | void
 }
 
 interface NoteCardProps {
@@ -45,8 +47,9 @@ function NoteCard({ title, content, onEdit }: NoteCardProps) {
   )
 }
 
-export function QuoteOverview({ quote, totals, quotedBy, onEditCustomer, onEditProducts, onSaveNotes }: QuoteOverviewProps) {
+export function QuoteOverview({ quote, totals, quotedBy, onEditCustomer, onEditProducts, onSaveNotes, onSaveGrandTotal }: QuoteOverviewProps) {
   const [activeNoteType, setActiveNoteType] = useState<NoteType | null>(null)
+  const [editTotalOpen, setEditTotalOpen] = useState(false)
   const storeUpdateQuote = useAppStore((state) => state.updateQuote)
   const pushToast = useAppStore((state) => state.pushToast)
 
@@ -58,6 +61,17 @@ export function QuoteOverview({ quote, totals, quotedBy, onEditCustomer, onEditP
     const saved = await storeUpdateQuote(quote.id, patch)
     if (saved) pushToast('Notes saved', 'success')
     return saved
+  }
+
+  async function handleSaveTotal(manualGrandTotal: number | null) {
+    if (onSaveGrandTotal) {
+      await onSaveGrandTotal(manualGrandTotal)
+      return
+    }
+    const saved = await storeUpdateQuote(quote.id, { manualGrandTotal })
+    if (saved) {
+      pushToast(manualGrandTotal == null ? 'Reset to calculated total' : 'Order total updated', 'success')
+    }
   }
 
   const hasCustomer = Boolean(quote.customer.name.trim())
@@ -118,10 +132,19 @@ export function QuoteOverview({ quote, totals, quotedBy, onEditCustomer, onEditP
             </div>
             <div>
               <dt>Total</dt>
-              <dd>{formatMoney(totals.grandTotal)}</dd>
+              <dd>
+                {formatMoney(totals.grandTotal)}
+                {totals.isManualGrandTotal ? <span className="manual-price-badge" style={{ marginLeft: 6 }}>manual</span> : null}
+              </dd>
             </div>
           </dl>
-          <Button className="quote-price-button">Adjust price</Button>
+          <Button
+            className="quote-price-button"
+            type="button"
+            onClick={() => setEditTotalOpen(true)}
+          >
+            Adjust price
+          </Button>
         </section>
       </div>
 
@@ -151,6 +174,14 @@ export function QuoteOverview({ quote, totals, quotedBy, onEditCustomer, onEditP
           if (!open) setActiveNoteType(null)
         }}
         onSave={handleSaveNote}
+      />
+
+      <EditGrandTotalDialog
+        open={editTotalOpen}
+        totals={totals}
+        jobNo={quote.jobNo}
+        onOpenChange={setEditTotalOpen}
+        onSave={handleSaveTotal}
       />
 
       <section className="quote-products-placeholder" aria-labelledby="quote-products-heading">

@@ -178,6 +178,11 @@ export function ConfiguratorPage() {
             if (saved) pushToast('Notes saved', 'success')
             return saved
           }}
+          onSaveGrandTotal={async (manualGrandTotal) => {
+            const saved = await updateQuote(activeQuote.id, { manualGrandTotal })
+            if (saved) pushToast(manualGrandTotal == null ? 'Reset to calculated total' : 'Order total updated', 'success')
+            return saved
+          }}
         />
         <NewQuoteCustomerDialog
           key={customerDialogOpen ? 'customer-open' : 'customer-closed'}
@@ -195,7 +200,7 @@ export function ConfiguratorPage() {
   }
 
   function freshCopy(source: QuoteItem): QuoteItem {
-    return {
+    const copy: QuoteItem = {
       ...source,
       id: createId(),
       location: '',
@@ -204,6 +209,8 @@ export function ConfiguratorPage() {
       panels: source.panels.map((panel) => ({ ...panel, id: createId() })),
       ...(source.layout ? { layout: cloneLayout(source.layout) } : {}),
     }
+    delete copy.manualUnitPrice
+    return copy
   }
 
   function addOpening() {
@@ -405,6 +412,18 @@ export function ConfiguratorPage() {
               })
             }}
             onDelete={setDeleteTarget}
+            onUpdatePrice={async (itemId, manualUnitPrice) => {
+              const target = activeQuote.items.find((i) => i.id === itemId)
+              if (!target) return
+              const updated = { ...target, manualUnitPrice }
+              const ok = await updateItem(activeQuote.id, updated)
+              if (ok) {
+                if (editingId === itemId && item) {
+                  setItem({ ...item, manualUnitPrice })
+                }
+                pushToast(manualUnitPrice == null ? 'Reset to calculated price' : 'Opening price updated', 'success')
+              }
+            }}
           />
           <TotalsCard
             quote={activeQuote}
@@ -413,6 +432,11 @@ export function ConfiguratorPage() {
             discountMax={discountCap(pricingConfig)}
             onDiscount={(value) => updateQuote(activeQuote.id, { discountPercent: clampPercent(value, discountCap(pricingConfig)) })}
             onTax={(value) => updateQuote(activeQuote.id, { taxPercent: clampPercent(value, LIMITS.taxMax) })}
+            onSaveGrandTotal={(manualGrandTotal) => {
+              void updateQuote(activeQuote.id, { manualGrandTotal }).then((ok) => {
+                if (ok) pushToast(manualGrandTotal == null ? 'Reset to calculated total' : 'Order total updated', 'success')
+              })
+            }}
           />
         </div>
       </section>

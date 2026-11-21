@@ -1,19 +1,32 @@
-import type { Quote } from '../../domain/models.ts'
+import type { PricingConfig, Quote } from '../../domain/models.ts'
 import { isDrawingFamily, itemProductId } from '../../domain/models.ts'
 import { findColour, findProduct } from '../../domain/catalogue.ts'
 import { useAppStore } from '../../store/useAppStore.ts'
 import { buildWorkOrder } from '../../domain/workOrder.ts'
-import { formatMm } from '../../utils/money.ts'
+import { calculateItemPrice, calculateQuoteTotals } from '../../domain/pricing.ts'
+import { formatMm, formatMoney } from '../../utils/money.ts'
 import { formatPrintDate } from '../../utils/dates.ts'
 import { OpeningDrawing } from '../drawing/OpeningDrawing.tsx'
 import { layoutOf } from '../../domain/layout.ts'
 
-export function WorkOrderDocument({ quote, printedAt }: { quote: Quote; printedAt: string }) {
+export function WorkOrderDocument({
+  quote,
+  printedAt,
+  pricingConfig,
+}: {
+  quote: Quote
+  printedAt: string
+  pricingConfig?: PricingConfig
+}) {
   const catalogue = useAppStore((state) => state.catalogue)
+  const defaultPricingConfig = useAppStore((state) => state.pricingConfig)
+  const activePricingConfig = pricingConfig ?? defaultPricingConfig
+  const totals = calculateQuoteTotals(quote, activePricingConfig, catalogue)
   const printed = formatPrintDate(printedAt)
   return (
     <div className="print-stack">
       {quote.items.map((item, index) => {
+        const price = calculateItemPrice(item, activePricingConfig, catalogue)
         const data = buildWorkOrder(item)
         const colour = findColour(item.externalColourId, catalogue)
         const drawing = isDrawingFamily(item.productType) ? item.productType : null
@@ -41,6 +54,15 @@ export function WorkOrderDocument({ quote, printedAt }: { quote: Quote; printedA
                   <td>
                     {printed} · Page {index + 1} of {quote.items.length}
                   </td>
+                </tr>
+                <tr>
+                  <th>Opening Price</th>
+                  <td>
+                    {formatMoney(price.lineTotal)}
+                    {item.quantity > 1 ? ` (${formatMoney(price.unitPrice)} each)` : ''}
+                  </td>
+                  <th>Order Total</th>
+                  <td>{formatMoney(totals.grandTotal)}</td>
                 </tr>
               </tbody>
             </table>

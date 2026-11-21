@@ -13,9 +13,11 @@ export function calculateItemPrice(item: QuoteItem, config: PricingConfig, catal
   const parts = calculateParts(item, catalogue)
   const partsCost = roundMoney(parts.reduce((sum, part) => sum + part.quantity * part.unitPrice, 0))
   const markup = 1 + Math.max(0, config.markupPercent) / 100
-  const unitPrice = roundMoney(partsCost * markup)
+  const calculatedUnitPrice = roundMoney(partsCost * markup)
+  const isManualPrice = typeof item.manualUnitPrice === 'number' && Number.isFinite(item.manualUnitPrice) && item.manualUnitPrice >= 0
+  const unitPrice = isManualPrice ? roundMoney(item.manualUnitPrice!) : calculatedUnitPrice
   const lineTotal = roundMoney(unitPrice * Math.max(1, item.quantity))
-  return { areaM2, perimeterM, parts, partsCost, unitPrice, lineTotal }
+  return { areaM2, perimeterM, parts, partsCost, calculatedUnitPrice, unitPrice, lineTotal, isManualPrice }
 }
 
 export function calculateSubtotal(items: QuoteItem[], config: PricingConfig, catalogue: Catalogue = currentCatalogue()): number {
@@ -47,12 +49,17 @@ export function calculateQuoteTotals(quote: Quote, config: PricingConfig, catalo
   const discountAmount = calculateDiscount(subtotal, quote.discountPercent, discountCap(config))
   const net = roundMoney(subtotal - discountAmount)
   const taxAmount = calculateTax(net, quote.taxPercent)
+  const calculatedGrandTotal = calculateGrandTotal(net, taxAmount)
+  const isManualGrandTotal = typeof quote.manualGrandTotal === 'number' && Number.isFinite(quote.manualGrandTotal) && quote.manualGrandTotal >= 0
+  const grandTotal = isManualGrandTotal ? roundMoney(quote.manualGrandTotal!) : calculatedGrandTotal
   return {
     subtotal,
     discountPercent: quote.discountPercent,
     discountAmount,
     taxPercent: quote.taxPercent,
     taxAmount,
-    grandTotal: calculateGrandTotal(net, taxAmount),
+    grandTotal,
+    calculatedGrandTotal,
+    isManualGrandTotal,
   }
 }

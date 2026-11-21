@@ -86,6 +86,18 @@ describe('quote rows', () => {
     expect(quoteAccessFromRow({ user_id: 'user-3', document: { id: 'x' } })).toBeNull()
   })
 
+  it('keeps manualUnitPrice on items and manualGrandTotal on quotes', () => {
+    const quote = createQuote('SP-0010', 20)
+    const item = createQuoteItem('window')
+    item.manualUnitPrice = 850.5
+    quote.items = [item]
+    quote.manualGrandTotal = 1000
+    const row = quoteToRow(quote, 'user-1')
+    const parsed = quoteFromDocument(row.document)
+    expect(parsed?.items[0]?.manualUnitPrice).toBe(850.5)
+    expect(parsed?.manualGrandTotal).toBe(1000)
+  })
+
   it('refuses a save over another user’s row', () => {
     expect(ownerCanWrite(null, 'user-1')).toBe(true)
     expect(ownerCanWrite('user-1', 'user-1')).toBe(true)
