@@ -1509,6 +1509,7 @@ h3 {
   background: var(--surface);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  align-items: stretch;
 }
 
 .login-aside {
@@ -4877,23 +4878,35 @@ select.input {
   opacity: 0.45;
 }
 
-.login-forgot-row {
+.login-meta-row {
   display: flex;
-  justify-content: flex-end;
-  margin: -10px 0 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+  gap: 8px;
+  margin-top: -6px;
+  margin-bottom: 2px;
+}
+
+.login-meta-row .login-feedback {
+  min-height: auto;
+  flex: 1;
 }
 
 .login-forgot-link {
   background: none;
   border: none;
   padding: 0;
+  margin-left: auto;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
   color: var(--accent);
   cursor: pointer;
+  white-space: nowrap;
   text-decoration: none;
   transition: color 0.15s ease, text-decoration 0.15s ease;
+  line-height: 1.4;
 }
 
 .login-forgot-link:hover:not(:disabled) {

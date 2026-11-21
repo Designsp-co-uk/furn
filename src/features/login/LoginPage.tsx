@@ -165,33 +165,33 @@ export function LoginPage({ variant = 'staff' }: { variant?: 'staff' | 'admin' }
             onChange={setUsername}
           />
           <PasswordField value={password} disabled={busy} invalid={Boolean(error || notice)} onChange={setPassword} />
-          {variant === 'admin' ? (
-            <div className="login-forgot-row">
+          <div className="login-meta-row">
+            <div className="login-feedback" aria-live="polite">
+              {error ? (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              {notice ? (
+                <p className="form-error" role="alert">
+                  {notice}
+                </p>
+              ) : null}
+              {successNotice ? (
+                <p className="form-success" role="status">
+                  {successNotice}
+                </p>
+              ) : null}
+            </div>
+            {variant === 'admin' ? (
               <button
                 type="button"
                 className="login-forgot-link"
                 disabled={busy || sendingReset}
                 onClick={() => void onForgotPassword()}
               >
-                {sendingReset ? 'Sending reset link…' : 'Forgot password?'}
+                {sendingReset ? 'Sending…' : 'Forgot password?'}
               </button>
-            </div>
-          ) : null}
-          <div className="login-feedback" aria-live="polite">
-            {error ? (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            ) : null}
-            {notice ? (
-              <p className="form-error" role="alert">
-                {notice}
-              </p>
-            ) : null}
-            {successNotice ? (
-              <p className="form-success" role="status">
-                {successNotice}
-              </p>
             ) : null}
           </div>
           <Button type="submit" disabled={busy} className={busy ? 'is-busy' : undefined}>
